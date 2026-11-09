@@ -2,6 +2,8 @@
 
 A high-octane, neon-drenched cyberpunk reimagining of the classic arcade game. Powered by pure modern web standards, *Pong: Cyberstorm* infuses traditional paddle mechanics with tactical energy spells, collectible court modifiers, predictive trajectory AI, procedural Web Audio sound synthesis, and detailed post-match analytics.
 
+> **Deployed here:** [https://fmarcio.github.io/pong-cyberstorm/](https://fmarcio.github.io/pong-cyberstorm/)
+
 ![Pong: Cyberstorm Gameplay Preview](assets/gameplay.gif)
 
 ---
@@ -24,10 +26,10 @@ Players can cast four distinct cyber-abilities during active play. Spells can be
 
 | Spell | Icon | Cost | Hotkeys | Description & Strategic Effect |
 | :--- | :---: | :---: | :---: | :--- |
-| **Fireball** | 🔥 | `35 Energy` | <kbd>1</kbd> / <kbd>Q</kbd> | Accelerates the ball to **2x velocity** in a blaze of red particles directly toward the opponent's goal line. |
-| **Freeze** | ❄️ | `45 Energy` | <kbd>2</kbd> / <kbd>E</kbd> | Glaciates the opponent's paddle with a frost aura, reducing their movement speed by **50% for 4 seconds**. |
-| **Multiball** | 🌀 | `50 Energy` | <kbd>3</kbd> / <kbd>R</kbd> | Clones active balls on the arena, multiplying trajectories and overwhelming opponent defenses. |
-| **Force Shield** | 🛡️ | `40 Energy` | <kbd>4</kbd> / <kbd>F</kbd> | Deploys a laser barrier behind your paddle that deflects any missed shot, granting a second chance. |
+| **Fireball** | <img src="assets/icons/fireball.svg" width="18" height="18" alt="Fireball" /> | `35 Energy` | <kbd>1</kbd> / <kbd>Q</kbd> | Accelerates the ball to **2x velocity** in a blaze of red particles directly toward the opponent's goal line. |
+| **Freeze** | <img src="assets/icons/freeze.svg" width="18" height="18" alt="Freeze" /> | `45 Energy` | <kbd>2</kbd> / <kbd>E</kbd> | Glaciates the opponent's paddle with a frost aura, reducing their movement speed by **50% for 4 seconds**. |
+| **Multiball** | <img src="assets/icons/multiball.svg" width="18" height="18" alt="Multiball" /> | `50 Energy` | <kbd>3</kbd> / <kbd>R</kbd> | Clones active balls on the arena, multiplying trajectories and overwhelming opponent defenses. |
+| **Force Shield** | <img src="assets/icons/shield.svg" width="18" height="18" alt="Force Shield" /> | `40 Energy` | <kbd>4</kbd> / <kbd>F</kbd> | Deploys a laser barrier behind your paddle that deflects any missed shot, granting a second chance. |
 
 ---
 
@@ -35,13 +37,13 @@ Players can cast four distinct cyber-abilities during active play. Spells can be
 
 Throughout the match, cybernetic item cubes periodically materialize on the court. Driving the ball through an item claims its effect. All items feature **cumulative stacking** and **independent 5-second countdown timers**:
 
-- **Reduce (Crimson):** Slashes opponent paddle height by `30%` for 5s.
-- **Size It Up (Emerald):** Expands your paddle height by `+30%` for 5s.
-- **Slow Down (Cyan):** Decreases ball velocity by `30%` for 5s, restoring control to frantic rallies.
-- **Energy Boost (Gold):** Instantly injects `+30%` energy into your capacitor.
-- **Energy Down (Purple):** Drains `30%` energy directly from your opponent's capacitor.
-- **Bomb Hazard (Red-Orange):** Rare anomaly! Ball inflates with warning flashes for 5s before detonating into mini shrapnel balls. Every unreturned shrapnel awards `+1` point to the opponent.
-- **Invisibility (Indigo):** Shrouds the ball in stealth cloaking, flickering between normal vision and 20% ghost opacity while travelling toward the enemy.
+- <img src="assets/icons/item-reduce.svg" width="16" height="16" alt="Reduce" /> **Reduce (Crimson):** Slashes opponent paddle height by `30%` for 5s.
+- <img src="assets/icons/item-size-up.svg" width="16" height="16" alt="Size It Up" /> **Size It Up (Emerald):** Expands your paddle height by `+30%` for 5s.
+- <img src="assets/icons/item-slow-down.svg" width="16" height="16" alt="Slow Down" /> **Slow Down (Cyan):** Decreases ball velocity by `30%` for 5s, restoring control to frantic rallies.
+- <img src="assets/icons/item-energy-boost.svg" width="16" height="16" alt="Energy Boost" /> **Energy Boost (Gold):** Instantly injects `+30%` energy into your capacitor.
+- <img src="assets/icons/item-energy-down.svg" width="16" height="16" alt="Energy Down" /> **Energy Down (Purple):** Drains `30%` energy directly from your opponent's capacitor.
+- <img src="assets/icons/item-bomb.svg" width="16" height="16" alt="Bomb Hazard" /> **Bomb Hazard (Red-Orange):** Rare anomaly! Ball inflates with warning flashes for 5s before detonating into mini shrapnel balls. Every unreturned shrapnel awards `+1` point to the opponent.
+- <img src="assets/icons/item-invisibility.svg" width="16" height="16" alt="Invisibility" /> **Invisibility (Indigo):** Shrouds the ball in stealth cloaking, flickering between normal vision and 20% ghost opacity while travelling toward the enemy.
 
 ---
 
