@@ -1,4 +1,4 @@
-# Pong: Cyberstorm ⚡
+# Pong: Cyberstorm
 
 A high-octane, neon-drenched cyberpunk reimagining of the classic arcade game. Powered by pure modern web standards, *Pong: Cyberstorm* infuses traditional paddle mechanics with tactical energy spells, collectible court modifiers, predictive trajectory AI, procedural Web Audio sound synthesis, and detailed post-match analytics.
 
@@ -6,11 +6,11 @@ A high-octane, neon-drenched cyberpunk reimagining of the classic arcade game. P
 
 ---
 
-## 🎮 Game Dynamics & Overview
+## Game Dynamics & Overview
 
 In *Pong: Cyberstorm*, matches are played to a customizable target score (default **7 points**, with presets for **9**, **11**, or custom target up to **99**). Every point is a tense tactical duel fought across a digital court where deflection angles, energy economy, and timely ability execution determine the victor.
 
-### ⚡ Energy System
+### Energy System
 Both competitors possess an independent **Energy Capacitor** (ranging from `0%` to `100%`) displayed on side energy columns flanking the court:
 - **Passive Generation:** Regenerates constantly at `+8%` energy per second.
 - **Deflection Bonus:** Successfully striking the ball with your paddle yields an instant `+15%` energy surge.
@@ -18,7 +18,7 @@ Both competitors possess an independent **Energy Capacitor** (ranging from `0%` 
 
 ---
 
-## 🔮 Tactical Spells (HUD & Hotkeys)
+## Tactical Spells (HUD & Hotkeys)
 
 Players can cast four distinct cyber-abilities during active play. Spells can be activated by clicking their respective HUD buttons or via keyboard shortcuts:
 
@@ -31,7 +31,7 @@ Players can cast four distinct cyber-abilities during active play. Spells can be
 
 ---
 
-## 📦 In-Court Collectible Items
+## In-Court Collectible Items
 
 Throughout the match, cybernetic item cubes periodically materialize on the court. Driving the ball through an item claims its effect. All items feature **cumulative stacking** and **independent 5-second countdown timers**:
 
@@ -45,7 +45,7 @@ Throughout the match, cybernetic item cubes periodically materialize on the cour
 
 ---
 
-## 🕹️ Controls & View Modes
+## Controls & View Modes
 
 ### Control Schemes
 
@@ -66,7 +66,7 @@ Throughout the match, cybernetic item cubes periodically materialize on the cour
 
 ---
 
-## 🧠 Opponent Modes & Tactical AI
+## Opponent Modes & Tactical AI
 
 - **vs Bot Mode:** Challenge an intelligent AI agent engineered with predictive physics calculations:
   - **Easy:** Relaxed tracking with reaction delays and minor aiming variances.
@@ -76,7 +76,7 @@ Throughout the match, cybernetic item cubes periodically materialize on the cour
 
 ---
 
-## 📸 Match Showcase
+## Match Showcase
 
 | Match Setup Modal | In-Game Rules & Codex |
 | :---: | :---: |
@@ -88,7 +88,7 @@ Throughout the match, cybernetic item cubes periodically materialize on the cour
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## Tech Stack & Architecture
 
 Built from the ground up prioritizing zero dependencies, fast 60+ FPS execution, and high security standards:
 
@@ -108,7 +108,7 @@ Built from the ground up prioritizing zero dependencies, fast 60+ FPS execution,
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 No build step or dependencies installation required!
 
@@ -132,6 +132,6 @@ No build step or dependencies installation required!
 
 ---
 
-## 📄 License
+## License
 
 This project is open source and available under the [MIT License](LICENSE).
