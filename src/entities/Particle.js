@@ -3,7 +3,7 @@
 /**
  * PONG: CYBERSTORM - Arcade Particle Entity
  * Lightweight visual effect particle used for paddle impacts, wall bounces,
- * fireball trails, ice crystals, bomb detonations, and item collection bursts.
+ * fireball trails, Crazy Ball glitch sparks, bomb detonations, and item collection bursts.
  */
 class Particle {
   /**

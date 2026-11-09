@@ -7,7 +7,7 @@
 /**
  * PONG: CYBERSTORM - Tactical AI Opponent
  * Calculates trajectory angles, wall ricochets, decision timing,
- * and casts spells (Force Shield, Freeze, Fireball, Multiball) based on difficulty.
+ * and casts spells (Force Shield, Crazy Ball, Fireball, Multiball) based on difficulty.
  */
 class TacticalAI {
   /**
@@ -27,8 +27,6 @@ class TacticalAI {
    */
   update(dt) {
     const p2 = this.game.paddle2;
-    const p1 = this.game.paddle1;
-    if (p2.freezeTimer > 0) return;
 
     let botSpeed = 7.8;
     let reactionDistance = this.game.width * 0.48;
@@ -57,7 +55,8 @@ class TacticalAI {
     let closestDist = Infinity;
 
     for (const b of this.game.balls) {
-      if (b.vx > 0) {
+      // A vanished Crazy Ball cannot be tracked: the bot loses sight of it
+      if (b.vx > 0 && !b.crazyHidden) {
         const dist = p2.x - b.x;
         if (dist > 0 && dist < closestDist) {
           closestDist = dist;
@@ -111,13 +110,11 @@ class TacticalAI {
         }
       }
 
-      // 2. Freeze strike if player is far from intercepting
-      if (this.game.difficulty !== 'easy' && p2.energy >= this.game.powerCosts.freeze && p1.freezeTimer <= 0) {
-        if (targetBall && targetBall.vx < 0 && targetBall.x < this.game.width * 0.4) {
-          if (Math.random() < (this.game.difficulty === 'insane' ? 0.75 : 0.4)) {
-            this.game.castPower(p2, 'freeze');
-            return;
-          }
+      // 2. Crazy Ball right after sending the ball back towards the player
+      if (this.game.difficulty !== 'easy' && p2.energy >= this.game.powerCosts.crazyball) {
+        const outgoingBall = this.game.balls.find((b) => b.vx < 0 && !b.isCrazy && b.x > this.game.width * 0.45);
+        if (outgoingBall && Math.random() < (this.game.difficulty === 'insane' ? 0.55 : 0.3)) {
+          if (this.game.castPower(p2, 'crazyball')) return;
         }
       }
 

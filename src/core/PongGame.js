@@ -2,7 +2,7 @@
 
 /**
  * @typedef {'config' | 'countdown' | 'serve' | 'playing' | 'game_over'} GameState
- * @typedef {'fireball' | 'freeze' | 'multiball' | 'shield'} PowerType
+ * @typedef {'fireball' | 'crazyball' | 'multiball' | 'shield'} PowerType
  * 
  * @typedef {Object} PaddleState
  * @property {number} id - Player identification (1 for left, 2 for right).
@@ -18,16 +18,8 @@
  * @property {string} color - Neon theme color hex.
  * @property {number} energy - Current accumulated magic energy.
  * @property {number} maxEnergy - Maximum energy ceiling.
- * @property {number} freezeTimer - Remaining paralysis duration in seconds.
  * @property {boolean} shieldActive - Whether the Force Shield barrier is up.
  * @property {number} shieldTime - Remaining Force Shield barrier duration in seconds.
- * 
- * @typedef {Object} Announcement
- * @property {string} text - Message banner string.
- * @property {string} color - Accent color for glow and fill.
- * @property {number} life - Remaining lifespan in seconds.
- * @property {number} maxLife - Initial total lifespan in seconds.
- * @property {number} y - Vertical canvas render coordinate.
  */
 
 /**
@@ -79,7 +71,7 @@ class PongGame {
     /** @type {Record<PowerType, number>} */
     this.powerCosts = {
       fireball: 35,
-      freeze: 45,
+      crazyball: 60,
       multiball: 50,
       shield: 40
     };
@@ -100,7 +92,6 @@ class PongGame {
       color: '#ffaa00',
       energy: 40,
       maxEnergy: 100,
-      freezeTimer: 0,
       shieldActive: false,
       shieldTime: 0
     };
@@ -121,7 +112,6 @@ class PongGame {
       color: '#a855f7',
       energy: 40,
       maxEnergy: 100,
-      freezeTimer: 0,
       shieldActive: false,
       shieldTime: 0
     };
@@ -140,11 +130,9 @@ class PongGame {
     /** @type {number} */
     this.itemSpawnTimer = 0;
 
-    // Visual Effects & Announcements
+    // Visual Effects
     /** @type {Particle[]} */
     this.particles = [];
-    /** @type {Announcement[]} */
-    this.announcements = [];
     /** @type {number} */
     this.shakeDuration = 0;
     /** @type {number} */
@@ -162,9 +150,9 @@ class PongGame {
     /** @type {number} Longest rally count during the match */
     this.maxRally = 0;
     /** @type {Record<string, number>} Count of spells cast by P1 */
-    this.p1PowersUsed = { fireball: 0, freeze: 0, multiball: 0, shield: 0 };
+    this.p1PowersUsed = { fireball: 0, crazyball: 0, multiball: 0, shield: 0 };
     /** @type {Record<string, number>} Count of spells cast by P2 / Bot */
-    this.p2PowersUsed = { fireball: 0, freeze: 0, multiball: 0, shield: 0 };
+    this.p2PowersUsed = { fireball: 0, crazyball: 0, multiball: 0, shield: 0 };
     /** @type {Record<string, number>} Count of court items collected */
     this.itemsCollected = { reduce: 0, size_up: 0, slow_down: 0, energy_boost: 0, energy_down: 0, bomb: 0, invisibility: 0 };
 
@@ -224,17 +212,17 @@ class PongGame {
 
       this.keys[key] = true;
 
-      // Player 1 Hotkeys (1/Q, 2/E, 3/R, 4/F)
+      // Player 1 Hotkeys (1/Q, 2/W, 3/E, 4/R)
       if (!this.isPaused && (this.gameState === 'playing' || this.gameState === 'serve')) {
         if (key === '1' || key === 'q') this.castPower(this.paddle1, 'fireball');
-        if (key === '2' || key === 'e') this.castPower(this.paddle1, 'freeze');
-        if (key === '3' || key === 'r') this.castPower(this.paddle1, 'multiball');
-        if (key === '4' || key === 'f') this.castPower(this.paddle1, 'shield');
+        if (key === '2' || key === 'w') this.castPower(this.paddle1, 'crazyball');
+        if (key === '3' || key === 'e') this.castPower(this.paddle1, 'multiball');
+        if (key === '4' || key === 'r') this.castPower(this.paddle1, 'shield');
 
         // Player 2 Hotkeys in 2-Player Local Mode (7, 8, 9, 0)
         if (this.oppMode === 'pvp') {
           if (key === '7') this.castPower(this.paddle2, 'fireball');
-          if (key === '8') this.castPower(this.paddle2, 'freeze');
+          if (key === '8') this.castPower(this.paddle2, 'crazyball');
           if (key === '9') this.castPower(this.paddle2, 'multiball');
           if (key === '0') this.castPower(this.paddle2, 'shield');
         }
@@ -251,8 +239,6 @@ class PongGame {
 
     this.canvas.addEventListener('mousemove', (e) => {
       if (this.controlMode !== 'mouse' || this.isPaused || this.gameState === 'config' || this.gameState === 'game_over') return;
-      if (this.paddle1.freezeTimer > 0) return;
-
       const rect = this.canvas.getBoundingClientRect();
       const scaleY = this.height / rect.height;
       const mouseY = (e.clientY - rect.top) * scaleY;
@@ -277,9 +263,6 @@ class PongGame {
     this.targetScore = Math.max(1, Math.min(99, Math.floor(Number(targetScore)) || 7));
     const targetBadge = document.getElementById('match-target-badge');
     if (targetBadge) targetBadge.textContent = `First to ${this.targetScore} Pts`;
-    if (this.ui.scoreboardTargetChip) {
-      this.ui.scoreboardTargetChip.textContent = `TARGET: ${this.targetScore} PTS`;
-    }
 
     this.ui.closeModals();
 
@@ -291,8 +274,8 @@ class PongGame {
     this.matchTime = 0;
     this.currentRally = 0;
     this.maxRally = 0;
-    this.p1PowersUsed = { fireball: 0, freeze: 0, multiball: 0, shield: 0 };
-    this.p2PowersUsed = { fireball: 0, freeze: 0, multiball: 0, shield: 0 };
+    this.p1PowersUsed = { fireball: 0, crazyball: 0, multiball: 0, shield: 0 };
+    this.p2PowersUsed = { fireball: 0, crazyball: 0, multiball: 0, shield: 0 };
     this.itemsCollected = { reduce: 0, size_up: 0, slow_down: 0, energy_boost: 0, energy_down: 0, bomb: 0, invisibility: 0 };
     if (this.ui) this.ui.updateMatchTimer(0);
 
@@ -304,14 +287,12 @@ class PongGame {
     if (this.ui.scoreP2El) this.ui.scoreP2El.textContent = '0';
 
     this.paddle1.energy = 40;
-    this.paddle1.freezeTimer = 0;
     this.paddle1.shieldActive = false;
     this.paddle1.h = this.paddle1.baseH;
     this.paddle1.activeEffects = [];
     this.paddle1.y = this.height / 2 - this.paddle1.h / 2;
 
     this.paddle2.energy = 40;
-    this.paddle2.freezeTimer = 0;
     this.paddle2.shieldActive = false;
     this.paddle2.h = this.paddle2.baseH;
     this.paddle2.activeEffects = [];
@@ -321,7 +302,7 @@ class PongGame {
     this.itemSpawnTimer = 0;
 
     this.particles = [];
-    this.announcements = [];
+    this.ui.clearFeed();
 
     // Setup initial stationary ball at court center
     this.balls = [this.createBaseBall(1)];
@@ -374,30 +355,14 @@ class PongGame {
   }
 
   /**
-   * Enqueues a floating banner announcement.
+   * Posts a short event message (power cast, item collected, etc.) to the
+   * discreet event feed above the powers HUD, outside the court.
    * @param {string} text - Message text.
-   * @param {string} color - Hex/CSS color for text and glow.
+   * @param {string} color - Hex/CSS accent color.
    * @returns {void}
    */
   addAnnouncement(text, color) {
-    const spacing = 32;
-    const baseY = this.height / 2 - 50;
-    let targetY = baseY;
-
-    if (this.announcements.length > 0) {
-      const maxY = Math.max(...this.announcements.map((a) => a.y));
-      if (maxY + spacing > baseY) {
-        targetY = maxY + spacing;
-      }
-    }
-
-    this.announcements.push({
-      text,
-      color,
-      life: 1.5,
-      maxLife: 1.5,
-      y: targetY
-    });
+    if (this.ui) this.ui.pushFeed(text, color);
   }
 
   /**
@@ -415,7 +380,6 @@ class PongGame {
       return false;
     }
 
-    const opponent = caster.id === 1 ? this.paddle2 : this.paddle1;
     const casterName = caster.id === 1 ? 'P1' : (this.oppMode === 'bot' ? 'BOT' : 'P2');
     let activated = false;
 
@@ -428,7 +392,7 @@ class PongGame {
 
         if (!eligibleBall) {
           if (caster.id === 1) {
-            this.addAnnouncement('⚠️ DEFLECT BALL FIRST TO CAST FIREBALL!', '#ffaa00');
+            this.addAnnouncement('Deflect the ball first to cast Fireball', '#ffaa00');
           }
           return false;
         }
@@ -436,16 +400,29 @@ class PongGame {
         eligibleBall.setFireball(caster.id);
         this.sound.playFireballSound();
         this.triggerScreenShake(7, 0.2);
-        this.addAnnouncement(`[FIREBALL] ${casterName} CAST FIREBALL!`, '#ff5500');
+        this.addAnnouncement(`${casterName} cast Fireball`, '#ff5500');
         activated = true;
         break;
       }
 
-      case 'freeze': {
-        opponent.freezeTimer = 1.4; // 1.4 seconds paralysis
-        this.sound.playFreezeSound();
-        this.spawnIceParticles(opponent.x + opponent.w / 2, opponent.y + opponent.h / 2, 20);
-        this.addAnnouncement(`[FREEZE] ${casterName} FROZE OPPONENT!`, '#38bdf8');
+      case 'crazyball': {
+        const targetDir = caster.id === 1 ? 1 : -1;
+        // Only castable on a ball already travelling towards the adversary
+        // (after a direct paddle hit or after a wall ricochet heading their way)
+        const eligibleBall = this.balls.find((b) => (targetDir > 0 ? b.vx > 0 : b.vx < 0) && !b.isCrazy);
+
+        if (!eligibleBall) {
+          if (caster.id === 1 || this.oppMode === 'pvp') {
+            this.addAnnouncement('Crazy Ball needs the ball heading to the opponent', '#ff3ea5');
+          }
+          return false;
+        }
+
+        eligibleBall.setCrazy(caster.id, 5.0); // 5 seconds of chaos
+        this.sound.playCrazyBallSound();
+        this.triggerScreenShake(6, 0.2);
+        this.spawnCrazyParticles(eligibleBall.x, eligibleBall.y, 26);
+        this.addAnnouncement(`${casterName} unleashed Crazy Ball`, '#ff3ea5');
         activated = true;
         break;
       }
@@ -485,7 +462,7 @@ class PongGame {
           this.balls.push(b1, b2);
           this.sound.playMultiballSound();
           this.triggerScreenShake(6, 0.2);
-          this.addAnnouncement(`[MULTIBALL] ${casterName} UNLEASHED MULTIBALL!`, '#c084fc');
+          this.addAnnouncement(`${casterName} unleashed Multiball`, '#c084fc');
           activated = true;
         }
         break;
@@ -495,7 +472,7 @@ class PongGame {
         caster.shieldActive = true;
         caster.shieldTime = 5.0; // 5 seconds duration
         this.sound.playShieldSound();
-        this.addAnnouncement(`[SHIELD] ${casterName} FORCE SHIELD ACTIVE!`, '#10b981');
+        this.addAnnouncement(`${casterName} raised Force Shield`, '#10b981');
         activated = true;
         break;
       }
@@ -576,17 +553,19 @@ class PongGame {
   }
 
   /**
-   * Spawns cryogenic ice particles around target.
+   * Spawns multicolored glitch sparks used by Crazy Ball chaos.
    * @param {number} x - Center X coordinate.
    * @param {number} y - Center Y coordinate.
    * @param {number} [count=18] - Particle count.
    * @returns {void}
    */
-  spawnIceParticles(x, y, count = 18) {
+  spawnCrazyParticles(x, y, count = 18) {
+    const colors = ['#ff3ea5', '#22d3ee', '#a3e635', '#ffe600'];
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = Math.random() * 4 + 1;
-      this.particles.push(new Particle(x, y, '#9ceaff', Math.cos(angle) * speed, Math.sin(angle) * speed, 0.6, 3.5));
+      const speed = Math.random() * 4.5 + 1;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      this.particles.push(new Particle(x, y, color, Math.cos(angle) * speed, Math.sin(angle) * speed, 0.5, 3));
     }
   }
 
@@ -644,14 +623,14 @@ class PongGame {
       case 'reduce': {
         // Reduces opponent's paddle size by 30% for 5s (Stackable with independent 5s timer)
         opponent.activeEffects.push({ type: 'reduce', multiplier: 0.7, duration: 5.0 });
-        this.addAnnouncement(`🔻 ${collectorName} GOT REDUCE: ${opponentName} SHRANK 30%!`, item.color);
+        this.addAnnouncement(`${collectorName} got Reduce: ${opponentName} paddle -30%`, item.color);
         break;
       }
 
       case 'size_up': {
         // Increases collector's paddle size by 30% for 5s (Stackable with independent 5s timer)
         collector.activeEffects.push({ type: 'size_up', multiplier: 1.3, duration: 5.0 });
-        this.addAnnouncement(`🔺 ${collectorName} GOT SIZE IT UP: PADDLE ENLARGED 30%!`, item.color);
+        this.addAnnouncement(`${collectorName} got Size It Up: paddle +30%`, item.color);
         break;
       }
 
@@ -661,35 +640,35 @@ class PongGame {
         ball.vx *= 0.7;
         ball.vy *= 0.7;
         ball.activeEffects.push({ type: 'slow_down', multiplier: 0.7, duration: 5.0 });
-        this.addAnnouncement(`❄️ ${collectorName} GOT SLOW DOWN: BALL DECELERATED 30%!`, item.color);
+        this.addAnnouncement(`${collectorName} got Slow Down: ball -30%`, item.color);
         break;
       }
 
       case 'energy_boost': {
         // Instantly gives collector a +30% energy boost
         collector.energy = Math.min(collector.maxEnergy, collector.energy + 30);
-        this.addAnnouncement(`⚡+ ${collectorName} GOT ENERGY BOOST: +30% ENERGY!`, item.color);
+        this.addAnnouncement(`${collectorName} got Energy Boost: +30 energy`, item.color);
         break;
       }
 
       case 'energy_down': {
         // Instantly drains 30% energy from opponent
         opponent.energy = Math.max(0, opponent.energy - 30);
-        this.addAnnouncement(`[ENERGY DRAIN] ${collectorName} DRAINED ${opponentName} -30% ENERGY!`, item.color);
+        this.addAnnouncement(`${collectorName} drained ${opponentName}: -30 energy`, item.color);
         break;
       }
 
       case 'bomb': {
         // Primes ball as a bomb: inflates for 5s then explodes into shrapnel mini-balls
         ball.armBomb(5.0);
-        this.addAnnouncement(`[BOMB PRIMED] ${collectorName} PRIMED A BOMB: DETONATION IN 5s!`, item.color);
+        this.addAnnouncement(`${collectorName} primed a Bomb: 5s to detonation`, item.color);
         break;
       }
 
       case 'invisibility': {
         // Cloaks the ball with flickering opacity (down to 40%) for 5s while moving towards opponent
         ball.setInvisibility(collectorId, 5.0);
-        this.addAnnouncement(`👁️‍🗨️ ${collectorName} GOT INVISIBILITY: CLOAKED BALL FOR 5s!`, item.color);
+        this.addAnnouncement(`${collectorName} got Invisibility: cloaked ball for 5s`, item.color);
         break;
       }
     }
@@ -724,7 +703,7 @@ class PongGame {
       );
     }
 
-    this.addAnnouncement('[DETONATION] BOMB SHRAPNEL SCATTERED!', '#ff4400');
+    this.addAnnouncement('Bomb detonated into shrapnel', '#ff4400');
 
     // Remove the detonated bomb ball
     this.balls.splice(ballIndex, 1);
@@ -755,6 +734,257 @@ class PongGame {
       shrapnel.isShrapnel = true;
       this.balls.push(shrapnel);
     }
+  }
+
+  // --- CRAZY BALL CHAOS ENGINE ---
+
+  /**
+   * Re-aims a ball so its velocity magnitude matches its speed again,
+   * keeping its horizontal heading and a playable (not too steep) angle.
+   * @param {Ball} ball - Ball to normalize.
+   * @param {number} [angle] - Optional explicit vertical angle in radians (relative to horizontal).
+   * @returns {void}
+   */
+  normalizeBallVelocity(ball, angle) {
+    const dir = Math.sign(ball.vx) || (ball.lastHitterId === 1 ? 1 : -1);
+    const maxAngle = Math.PI * 0.32;
+    let a = angle !== undefined ? angle : Math.atan2(ball.vy, Math.abs(ball.vx));
+    a = Math.max(-maxAngle, Math.min(maxAngle, a));
+    ball.vx = Math.cos(a) * ball.speed * dir;
+    ball.vy = Math.sin(a) * ball.speed;
+  }
+
+  /**
+   * Advances Crazy Ball chaos on a ball: duration, surface captures,
+   * vanishing, behavior rolls and continuous behavior effects.
+   * @param {Ball} b - Crazy ball.
+   * @param {number} dt - Elapsed seconds since last frame.
+   * @returns {void}
+   */
+  updateCrazyBall(b, dt) {
+    b.crazyTimer -= dt;
+    b.crazyPhase += dt;
+
+    // Chaos expired: restore a sane, predictable ball
+    if (b.crazyTimer <= 0) {
+      if (b.crazyStuck) this.releaseCrazyStick(b);
+      if (b.crazyHidden) this.crazyReappear(b, false);
+      b.clearCrazy();
+      this.normalizeBallVelocity(b);
+      this.spawnCrazyParticles(b.x, b.y, 10);
+      return;
+    }
+
+    // Captured on a surface: hold the ball until release
+    if (b.crazyStuck) {
+      const stick = b.crazyStuck;
+      stick.timer -= dt;
+      if (stick.surface === 'paddle1' || stick.surface === 'paddle2') {
+        const paddle = stick.surface === 'paddle1' ? this.paddle1 : this.paddle2;
+        b.y = paddle.y + Math.max(0, Math.min(paddle.h, stick.offsetY));
+        b.x = stick.surface === 'paddle1' ? paddle.x + paddle.w + b.radius : paddle.x - b.radius;
+      }
+      if (Math.random() < 0.3) this.spawnCrazyParticles(b.x, b.y, 1);
+      if (stick.timer <= 0) this.releaseCrazyStick(b);
+      return;
+    }
+
+    // Vanished: reappear somewhere closer to the defender
+    if (b.crazyHidden) {
+      b.crazyHiddenTimer -= dt;
+      if (b.crazyHiddenTimer <= 0) this.crazyReappear(b, true);
+    }
+
+    // Roll a new unpredictable behavior when the current one ends
+    b.crazyModeTimer -= dt;
+    if (b.crazyModeTimer <= 0 && !b.crazyHidden) {
+      this.rollCrazyMode(b);
+    }
+
+    // Continuous behavior effects
+    b.crazyTimeScale = 1;
+    switch (b.crazyMode) {
+      case 'zigzag':
+        // Snakes up and down (~25px amplitude) without corrupting its velocity
+        b.y += Math.cos(b.crazyPhase * 14) * 6 * dt * 60;
+        break;
+      case 'gravity':
+        // Unreal sideways gravity bends the path into a banana curve
+        b.vy += b.crazyGravity * dt * 60;
+        b.vy = Math.max(-b.speed * 1.1, Math.min(b.speed * 1.1, b.vy));
+        break;
+      case 'stutter':
+        // Freezes mid-air, then dashes forward (alternating every 0.2s)
+        b.crazyTimeScale = Math.floor(b.crazyPhase * 5) % 2 === 0 ? 0.08 : 2.0;
+        break;
+      case 'fakeout':
+        // Sudden vertical U-turns mid-flight (~3 per second)
+        if (Math.random() < dt * 3) {
+          b.vy = -b.vy + (Math.random() - 0.5) * 3;
+          this.spawnCrazyParticles(b.x, b.y, 4);
+        }
+        break;
+      case 'grow':
+        b.crazyRadiusTarget = b.baseRadius * 2 + Math.sin(b.crazyPhase * 12) * 3;
+        break;
+    }
+
+    // Ease radius towards the behavior target (bombs control their own size)
+    if (!b.isBomb) {
+      b.radius += (b.crazyRadiusTarget - b.radius) * Math.min(1, dt * 10);
+    }
+
+    // Glitch sparks while visible
+    if (!b.crazyHidden && Math.random() < 0.3) {
+      this.spawnCrazyParticles(b.x, b.y, 1);
+    }
+  }
+
+  /**
+   * Ends the current Crazy Ball behavior and starts a new random one.
+   * @param {Ball} b - Crazy ball.
+   * @returns {void}
+   */
+  rollCrazyMode(b) {
+    this.endCrazyMode(b);
+
+    /** @type {import('../entities/Ball.js').CrazyMode[]} */
+    let modes = ['shrink', 'grow', 'zigzag', 'gravity', 'stutter', 'blink', 'sticky', 'fakeout'];
+    modes = modes.filter((m) => {
+      if (m === b.crazyMode) return false; // Never repeat the same behavior twice in a row
+      if (b.isBomb && (m === 'shrink' || m === 'grow')) return false;
+      if (m === 'blink' && b.crazyTimer < 0.6) return false;
+      return true;
+    });
+
+    const mode = modes[Math.floor(Math.random() * modes.length)];
+    b.crazyMode = mode;
+    b.crazyModeTimer = 0.7 + Math.random() * 0.4;
+
+    switch (mode) {
+      case 'shrink':
+        b.crazyRadiusTarget = Math.max(3, b.baseRadius * 0.4);
+        break;
+      case 'grow':
+        b.crazyRadiusTarget = b.baseRadius * 2;
+        break;
+      case 'gravity':
+        b.crazyGravity = (Math.random() < 0.5 ? -1 : 1) * 0.45;
+        break;
+      case 'blink':
+        b.crazyHidden = true;
+        b.crazyHiddenTimer = 0.4;
+        b.crazyModeTimer = 0.85;
+        this.spawnCrazyParticles(b.x, b.y, 14);
+        this.sound.playCrazyGlitch();
+        break;
+      case 'sticky':
+        b.crazySticky = true;
+        b.crazyModeTimer = 1.4; // Waits for a surface contact
+        break;
+      case 'fakeout':
+        b.vy = -b.vy;
+        break;
+    }
+  }
+
+  /**
+   * Reverts the temporary modifiers of the current Crazy Ball behavior.
+   * @param {Ball} b - Crazy ball.
+   * @returns {void}
+   */
+  endCrazyMode(b) {
+    switch (b.crazyMode) {
+      case 'shrink':
+      case 'grow':
+        b.crazyRadiusTarget = b.baseRadius;
+        break;
+      case 'gravity':
+        b.crazyGravity = 0;
+        this.normalizeBallVelocity(b);
+        break;
+      case 'stutter':
+        b.crazyTimeScale = 1;
+        break;
+      case 'sticky':
+        b.crazySticky = false;
+        break;
+      case 'blink':
+        if (b.crazyHidden) this.crazyReappear(b, false);
+        break;
+    }
+  }
+
+  /**
+   * Makes a vanished Crazy Ball visible again, optionally teleporting it
+   * forward (closer to the defending paddle) with a new random height.
+   * @param {Ball} b - Crazy ball.
+   * @param {boolean} teleport - Whether to relocate the ball before revealing it.
+   * @returns {void}
+   */
+  crazyReappear(b, teleport) {
+    b.crazyHidden = false;
+    b.crazyHiddenTimer = 0;
+
+    if (teleport) {
+      const dir = Math.sign(b.vx) || 1;
+      const defenderFront = dir > 0 ? this.paddle2.x : this.paddle1.x + this.paddle1.w;
+      const remaining = Math.abs(defenderFront - b.x);
+      const safeGap = 170; // Always leave the defender a fair reaction window
+
+      if (remaining > safeGap) {
+        b.x += dir * (remaining - safeGap) * (0.35 + Math.random() * 0.4);
+      }
+      b.y = 60 + Math.random() * (this.height - 120);
+      this.normalizeBallVelocity(b, (Math.random() - 0.5) * 1.2);
+      b.trail = [];
+    }
+
+    this.spawnCrazyParticles(b.x, b.y, 14);
+    this.sound.playCrazyGlitch();
+  }
+
+  /**
+   * Glues a sticky Crazy Ball to the surface it just touched.
+   * @param {Ball} b - Crazy ball.
+   * @param {import('../entities/Ball.js').CrazyStick['surface']} surface - Surface touched.
+   * @param {PaddleState} [paddle] - Paddle touched (paddle captures only).
+   * @returns {void}
+   */
+  captureCrazyBall(b, surface, paddle) {
+    b.crazySticky = false;
+    b.crazyStuck = {
+      surface,
+      timer: 0.5 + Math.random() * 0.25,
+      offsetY: paddle ? b.y - paddle.y : 0
+    };
+    this.spawnCrazyParticles(b.x, b.y, 10);
+    this.sound.playCrazyGlitch();
+  }
+
+  /**
+   * Releases a captured Crazy Ball, firing it off at a random angle
+   * away from the surface that held it.
+   * @param {Ball} b - Crazy ball.
+   * @returns {void}
+   */
+  releaseCrazyStick(b) {
+    const stick = b.crazyStuck;
+    b.crazyStuck = null;
+    if (!stick) return;
+
+    let angle;
+    if (stick.surface === 'top') {
+      angle = 0.25 + Math.random() * 0.6; // Downwards
+    } else if (stick.surface === 'bottom') {
+      angle = -(0.25 + Math.random() * 0.6); // Upwards
+    } else {
+      angle = (Math.random() - 0.5) * 1.6; // Anywhere forward
+    }
+    this.normalizeBallVelocity(b, angle);
+    b.crazyModeTimer = 0; // Roll a fresh behavior right away
+    this.spawnCrazyParticles(b.x, b.y, 12);
+    this.sound.playCrazyGlitch();
   }
 
   /**
@@ -826,7 +1056,6 @@ class PongGame {
 
     // 1. Update status timers and energy regeneration
     [this.paddle1, this.paddle2].forEach((p) => {
-      if (p.freezeTimer > 0) p.freezeTimer = Math.max(0, p.freezeTimer - dt);
       if (p.shieldActive) {
         p.shieldTime -= dt;
         if (p.shieldTime <= 0) p.shieldActive = false;
@@ -861,19 +1090,20 @@ class PongGame {
     this.paddle2.prevY = this.paddle2.y;
 
     // 3. Player 1 Movement
-    if (this.paddle1.freezeTimer <= 0 && this.controlMode === 'keyboard') {
-      if (this.keys['w'] || this.keys['arrowup']) this.paddle1.y -= this.paddle1.speed * dt * 60;
-      if (this.keys['s'] || this.keys['arrowdown']) this.paddle1.y += this.paddle1.speed * dt * 60;
+    if (this.controlMode === 'keyboard') {
+      // A / Z move P1 (Q W E R are reserved for powers). Arrows also work vs Bot,
+      // but belong exclusively to Player 2 in local PvP.
+      const arrowsForP1 = this.oppMode === 'bot';
+      if (this.keys['a'] || (arrowsForP1 && this.keys['arrowup'])) this.paddle1.y -= this.paddle1.speed * dt * 60;
+      if (this.keys['z'] || (arrowsForP1 && this.keys['arrowdown'])) this.paddle1.y += this.paddle1.speed * dt * 60;
       this.clampPaddle(this.paddle1);
     }
 
     // 4. Opponent Movement (PvP or Tactical AI)
     if (this.oppMode === 'pvp') {
-      if (this.paddle2.freezeTimer <= 0) {
-        if (this.keys['arrowup']) this.paddle2.y -= this.paddle2.speed * dt * 60;
-        if (this.keys['arrowdown']) this.paddle2.y += this.paddle2.speed * dt * 60;
-        this.clampPaddle(this.paddle2);
-      }
+      if (this.keys['arrowup']) this.paddle2.y -= this.paddle2.speed * dt * 60;
+      if (this.keys['arrowdown']) this.paddle2.y += this.paddle2.speed * dt * 60;
+      this.clampPaddle(this.paddle2);
     } else {
       this.ai.update(dt);
     }
@@ -935,6 +1165,7 @@ class PongGame {
 
       // Check collision with any active ball
       for (const b of this.balls) {
+        if (b.crazyHidden) continue; // Vanished Crazy Ball phases through items
         const dx = b.x - item.x;
         const dy = b.y - item.y;
         const dist = Math.hypot(dx, dy);
@@ -955,9 +1186,16 @@ class PongGame {
       b.trail.unshift({ x: b.x, y: b.y, isFireball: b.isFireball });
       if (b.trail.length > b.maxTrail) b.trail.pop();
 
+      // Crazy Ball chaos (may capture the ball on a surface or warp its time)
+      if (b.isCrazy) this.updateCrazyBall(b, dt);
+      const isStuck = b.crazyStuck !== null;
+      const timeScale = b.isCrazy ? b.crazyTimeScale : 1;
+
       // Motion
-      b.x += b.vx * dt * 60;
-      b.y += b.vy * dt * 60;
+      if (!isStuck) {
+        b.x += b.vx * dt * 60 * timeScale;
+        b.y += b.vy * dt * 60 * timeScale;
+      }
 
       // Bomb ticking, swelling & fuse burning
       if (b.isBomb) {
@@ -1060,20 +1298,25 @@ class PongGame {
         );
       }
 
+      // Captured Crazy Ball skips collisions and scoring until released
+      if (isStuck) continue;
+
       // Wall Ricochets
       const topLimit = 12 + b.radius;
       const bottomLimit = this.height - 12 - b.radius;
 
       if (b.y <= topLimit) {
         b.y = topLimit;
-        b.vy = -b.vy;
+        b.vy = Math.abs(b.vy);
         this.sound.playWallHit();
         this.spawnHitParticles(b.x, topLimit, '#ffe600', 6, 0);
+        if (b.crazySticky) this.captureCrazyBall(b, 'top');
       } else if (b.y >= bottomLimit) {
         b.y = bottomLimit;
-        b.vy = -b.vy;
+        b.vy = -Math.abs(b.vy);
         this.sound.playWallHit();
         this.spawnHitParticles(b.x, bottomLimit, '#ffe600', 6, 0);
+        if (b.crazySticky) this.captureCrazyBall(b, 'bottom');
       }
 
       // Paddle 1 Collision
@@ -1085,6 +1328,7 @@ class PongGame {
         b.y <= this.paddle1.y + this.paddle1.h + 6
       ) {
         this.handlePaddleBounce(b, this.paddle1, 1);
+        if (b.crazySticky) this.captureCrazyBall(b, 'paddle1', this.paddle1);
       }
 
       // Paddle 2 Collision
@@ -1096,6 +1340,7 @@ class PongGame {
         b.y <= this.paddle2.y + this.paddle2.h + 6
       ) {
         this.handlePaddleBounce(b, this.paddle2, -1);
+        if (b.crazySticky) this.captureCrazyBall(b, 'paddle2', this.paddle2);
       }
 
       // Force Shield Deflections
@@ -1106,7 +1351,7 @@ class PongGame {
         this.triggerScreenShake(7, 0.2);
         this.spawnHitParticles(18, b.y, '#00ffaa', 18, 1);
         this.paddle1.shieldActive = false;
-        this.addAnnouncement('[SHIELD DEFLECTION] P1 DEFLECTED GOAL!', '#10b981');
+        this.addAnnouncement('P1 shield blocked a goal', '#10b981');
       }
 
       // P2 Shield (X = width - 18)
@@ -1116,7 +1361,7 @@ class PongGame {
         this.triggerScreenShake(7, 0.2);
         this.spawnHitParticles(this.width - 18, b.y, '#10b981', 18, -1);
         this.paddle2.shieldActive = false;
-        this.addAnnouncement('[SHIELD DEFLECTION] P2 DEFLECTED GOAL!', '#10b981');
+        this.addAnnouncement(`${this.oppMode === 'bot' ? 'BOT' : 'P2'} shield blocked a goal`, '#10b981');
       }
 
       // --- MULTIBALL / SHRAPNEL SCORING: Every ball scores +1 point immediately! ---
@@ -1170,14 +1415,6 @@ class PongGame {
     for (let i = this.particles.length - 1; i >= 0; i--) {
       this.particles[i].update(dt);
       if (this.particles[i].life <= 0) this.particles.splice(i, 1);
-    }
-
-    // 8. Update Announcement Banners
-    for (let i = this.announcements.length - 1; i >= 0; i--) {
-      const a = this.announcements[i];
-      a.life -= dt;
-      a.y -= dt * 25;
-      if (a.life <= 0) this.announcements.splice(i, 1);
     }
 
     // 9. Update Screen Shake
@@ -1253,8 +1490,13 @@ class PongGame {
       p.draw(this.ctx);
     }
 
-    // Skill Announcements
-    this.drawAnnouncements();
+    // Idle arena hint (Match Setup / Match Over dismissed without starting a match)
+    if (this.gameState === 'config' || this.gameState === 'game_over') {
+      this.ctx.fillStyle = 'rgba(255, 209, 102, 0.55)';
+      this.ctx.font = '700 15px "Orbitron", sans-serif';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('OPEN SETTINGS TO START A NEW MATCH', this.width / 2, this.height / 2 + 5);
+    }
 
     // Serve Countdown Message
     if (this.gameState === 'serve') {
@@ -1306,7 +1548,7 @@ class PongGame {
   }
 
   /**
-   * Renders a player paddle with neon shadow, white core, cryogenic overlay, or size aura.
+   * Renders a player paddle with neon shadow, white core, and size aura.
    * @param {PaddleState} paddle - Paddle to render.
    * @returns {void}
    */
@@ -1326,24 +1568,6 @@ class PongGame {
     this.ctx.beginPath();
     this.ctx.roundRect(paddle.x + 3, paddle.y + 4, paddle.w - 6, paddle.h - 8, [2]);
     this.ctx.fill();
-
-    // Ice Crystal Overlay when Frozen
-    if (paddle.freezeTimer > 0) {
-      this.ctx.fillStyle = 'rgba(85, 214, 255, 0.65)';
-      this.ctx.shadowColor = '#55d6ff';
-      this.ctx.shadowBlur = 20;
-      this.ctx.strokeStyle = '#ffffff';
-      this.ctx.lineWidth = 2;
-      this.ctx.beginPath();
-      this.ctx.roundRect(paddle.x - 4, paddle.y - 4, paddle.w + 8, paddle.h + 8, [6]);
-      this.ctx.fill();
-      this.ctx.stroke();
-
-      this.ctx.fillStyle = '#ffffff';
-      this.ctx.font = '700 12px "Orbitron", sans-serif';
-      this.ctx.textAlign = 'center';
-      this.ctx.fillText('❄️ FROZEN', paddle.x + paddle.w / 2, paddle.y - 10);
-    }
 
     // Size Modifier Aura (Cumulative active effects)
     if (paddle.activeEffects && paddle.activeEffects.length > 0) {
@@ -1366,6 +1590,8 @@ class PongGame {
    * @returns {void}
    */
   drawBallTrail(ball) {
+    if (ball.crazyHidden) return; // Vanished Crazy Ball leaves no trace
+
     let trailInvisibilityAlpha = 1.0;
     if (ball.invisibilityTimer > 0) {
       const towardsOpponent = (ball.invisibilityOwner === 1 && ball.vx > 0) || (ball.invisibilityOwner === 2 && ball.vx < 0);
@@ -1383,7 +1609,9 @@ class PongGame {
 
       this.ctx.save();
       this.ctx.globalAlpha = progress * 0.4 * trailInvisibilityAlpha;
-      if (pos.isFireball) {
+      if (ball.isCrazy && !ball.isBomb) {
+        this.ctx.fillStyle = `hsl(${(this.crazyHue(ball) + i * 12) % 360}, 100%, 60%)`;
+      } else if (pos.isFireball) {
         this.ctx.fillStyle = i % 2 === 0 ? '#ff5500' : '#ffe600';
       } else if (ball.isBomb) {
         this.ctx.fillStyle = i % 2 === 0 ? '#ff3300' : '#ff8800';
@@ -1405,6 +1633,8 @@ class PongGame {
    * @returns {void}
    */
   drawBall(ball) {
+    if (ball.crazyHidden) return; // Vanished Crazy Ball is fully invisible
+
     this.ctx.save();
 
     // Invisibility cloaking: alternates opacity down to 0.20
@@ -1416,7 +1646,9 @@ class PongGame {
       this.ctx.globalAlpha = 0.20 + 0.80 * wave;
     }
 
-    if (ball.isFireball) {
+    if (ball.isCrazy && !ball.isBomb) {
+      this.drawCrazyBall(ball);
+    } else if (ball.isFireball) {
       this.ctx.fillStyle = '#ffe600';
       this.ctx.shadowColor = '#ff5500';
       this.ctx.shadowBlur = 22;
@@ -1483,21 +1715,62 @@ class PongGame {
   }
 
   /**
-   * Renders ascending floating skill announcement text banners.
+   * Current rainbow hue of a Crazy Ball (slow shimmer: one full turn every ~3s).
+   * @param {Ball} ball - Crazy ball.
+   * @returns {number} Hue in degrees [0, 360).
+   */
+  crazyHue(ball) {
+    return Math.floor(ball.crazyPhase * 120) % 360;
+  }
+
+  /**
+   * Renders a Crazy Ball: rainbow body, RGB-split glitch ghosts,
+   * fireball glow when combined, and a pulsing ring while glued to a surface.
+   * @param {Ball} ball - Crazy ball.
    * @returns {void}
    */
-  drawAnnouncements() {
-    for (const a of this.announcements) {
-      this.ctx.save();
-      const alpha = Math.min(1, a.life / (a.maxLife * 0.4));
-      this.ctx.globalAlpha = Math.max(0, alpha);
-      this.ctx.fillStyle = a.color;
-      this.ctx.shadowColor = a.color;
-      this.ctx.shadowBlur = 12;
-      this.ctx.font = '800 18px "Orbitron", sans-serif';
-      this.ctx.textAlign = 'center';
-      this.ctx.fillText(a.text, this.width / 2, a.y);
-      this.ctx.restore();
+  drawCrazyBall(ball) {
+    const ctx = this.ctx;
+    const color = `hsl(${this.crazyHue(ball)}, 100%, 60%)`;
+
+    // Chromatic aberration ghosts
+    const jitter = 2 + Math.random() * 2;
+    ctx.save();
+    ctx.globalAlpha *= 0.55;
+    ctx.fillStyle = '#22d3ee';
+    ctx.beginPath();
+    ctx.arc(ball.x - jitter, ball.y + (Math.random() - 0.5) * 2, ball.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ff3ea5';
+    ctx.beginPath();
+    ctx.arc(ball.x + jitter, ball.y + (Math.random() - 0.5) * 2, ball.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Rainbow body
+    ctx.fillStyle = color;
+    ctx.shadowColor = ball.isFireball ? '#ff5500' : color;
+    ctx.shadowBlur = ball.isFireball ? 22 : 16;
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // White hot core
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.radius * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Pulsing capture ring while glued to a wall or paddle
+    if (ball.crazyStuck) {
+      ctx.strokeStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 12;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.radius + 5 + Math.sin(performance.now() * 0.03) * 2, 0, Math.PI * 2);
+      ctx.stroke();
     }
   }
 

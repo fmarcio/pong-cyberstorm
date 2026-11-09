@@ -33,7 +33,7 @@ class UIManager {
     /** @type {HTMLElement|null} */
     this.p2EnergyHeaderLabel = document.getElementById('p2-energy-header-label');
     /** @type {HTMLElement|null} */
-    this.scoreboardTargetChip = document.getElementById('scoreboard-target-chip');
+    this.eventFeedEl = document.getElementById('event-feed-list');
     /** @type {HTMLElement|null} */
     this.p1EnergyFillEl = document.getElementById('p1-energy-fill');
     /** @type {HTMLElement|null} */
@@ -57,6 +57,9 @@ class UIManager {
     /** @type {HTMLElement|null} */
     this.p2EnergyWarningEl = document.getElementById('p2-energy-warning');
 
+    /** @type {{ state: string } | null} State to restore when Match Setup is dismissed */
+    this.configReturn = null;
+
     this.setupUI();
     this.setupModals();
   }
@@ -66,44 +69,17 @@ class UIManager {
    * @returns {void}
    */
   setupUI() {
-    const btnControl = document.getElementById('btn-control-mode');
-    const btnOpp = document.getElementById('btn-opp-mode');
-    const btnDiff = document.getElementById('btn-difficulty');
-    const btnAudio = document.getElementById('btn-audio');
-    const lblAudio = document.getElementById('lbl-audio');
     const btnOpenConfig = document.getElementById('btn-open-config');
-
-    if (btnControl) {
-      btnControl.addEventListener('click', () => {
-        this.setControlMode(this.game.controlMode === 'mouse' ? 'keyboard' : 'mouse');
-      });
-    }
-
-    if (btnOpp) {
-      btnOpp.addEventListener('click', () => {
-        this.setOppMode(this.game.oppMode === 'bot' ? 'pvp' : 'bot');
-      });
-    }
-
-    if (btnDiff) {
-      btnDiff.addEventListener('click', () => {
-        /** @type {DifficultyLevel[]} */
-        const diffs = ['easy', 'medium', 'insane'];
-        const nextIdx = (diffs.indexOf(this.game.difficulty) + 1) % diffs.length;
-        this.setDifficulty(diffs[nextIdx]);
-      });
-    }
-
-    if (btnAudio && lblAudio) {
-      btnAudio.addEventListener('click', () => {
-        this.game.sound.enabled = !this.game.sound.enabled;
-        lblAudio.textContent = this.game.sound.enabled ? 'On' : 'Muted';
-      });
-    }
-
     if (btnOpenConfig) {
       btnOpenConfig.addEventListener('click', () => {
         this.openConfigModal();
+      });
+    }
+
+    const btnOpenOptions = document.getElementById('btn-open-options');
+    if (btnOpenOptions) {
+      btnOpenOptions.addEventListener('click', () => {
+        this.openOptionsModal();
       });
     }
 
@@ -114,19 +90,17 @@ class UIManager {
       });
     }
 
-    const btnTheater = document.getElementById('btn-theater-mode');
-    if (btnTheater) {
-      btnTheater.addEventListener('click', () => {
-        this.toggleTheaterMode();
-      });
-    }
-
-    const btnFullscreen = document.getElementById('btn-fullscreen');
-    if (btnFullscreen) {
-      btnFullscreen.addEventListener('click', () => {
-        this.toggleFullscreen();
-      });
-    }
+    // Game Options modal segmented controls
+    this.bindSegmented('#optTheaterSelector', (val) => {
+      if ((val === 'theater') !== document.body.classList.contains('theater-mode')) this.toggleTheaterMode();
+    });
+    this.bindSegmented('#optFullscreenSelector', (val) => {
+      if ((val === 'on') !== Boolean(document.fullscreenElement)) this.toggleFullscreen();
+    });
+    this.bindSegmented('#optControlSelector', (val) => this.setControlMode(/** @type {ControlMode} */ (val)));
+    this.bindSegmented('#optOppSelector', (val) => this.setOppMode(/** @type {OpponentMode} */ (val)));
+    this.bindSegmented('#optDiffSelector', (val) => this.setDifficulty(/** @type {DifficultyLevel} */ (val)));
+    this.bindSegmented('#optSoundSelector', (val) => this.setSoundEnabled(val === 'on'));
 
     // Synchronize fullscreen state when entering/exiting via F11 or Esc
     document.addEventListener('fullscreenchange', () => {
@@ -150,24 +124,93 @@ class UIManager {
   }
 
   /**
+   * Wires click handlers for every option of a segmented control.
+   * @param {string} selector - CSS selector of the segmented control container.
+   * @param {(val: string) => void} onSelect - Callback receiving the clicked option `data-val`.
+   * @returns {void}
+   */
+  bindSegmented(selector, onSelect) {
+    document.querySelectorAll(`${selector} .segment-btn`).forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const val = /** @type {HTMLElement} */ (btn).dataset.val;
+        if (val) onSelect(val);
+      });
+    });
+  }
+
+  /**
+   * Highlights the option matching `val` in one or more segmented controls.
+   * @param {string} selectors - Comma-separated CSS selectors of segmented control containers.
+   * @param {string} val - Active option value.
+   * @returns {void}
+   */
+  syncSegmented(selectors, val) {
+    selectors.split(',').forEach((sel) => {
+      document.querySelectorAll(`${sel.trim()} .segment-btn`).forEach((btn) => {
+        btn.classList.toggle('active', /** @type {HTMLElement} */ (btn).dataset.val === val);
+      });
+    });
+  }
+
+  /**
+   * Posts a compact event chip (power cast, item collected...) to the event feed
+   * above the powers HUD. Keeps only the latest few and fades each out after a while.
+   * @param {string} text - Message text.
+   * @param {string} color - Hex/CSS accent color.
+   * @returns {void}
+   */
+  pushFeed(text, color) {
+    const list = this.eventFeedEl;
+    if (!list) return;
+
+    const chip = document.createElement('span');
+    chip.className = 'feed-chip';
+    chip.style.setProperty('--chip-color', color);
+    chip.textContent = text;
+    list.prepend(chip);
+
+    // Cap the feed to the newest 3 events
+    while (list.children.length > 3) {
+      list.lastElementChild?.remove();
+    }
+
+    setTimeout(() => {
+      chip.classList.add('fading');
+      setTimeout(() => chip.remove(), 400);
+    }, 3200);
+  }
+
+  /**
+   * Removes every chip from the event feed.
+   * @returns {void}
+   */
+  clearFeed() {
+    if (this.eventFeedEl) this.eventFeedEl.replaceChildren();
+  }
+
+  /**
+   * Enables or mutes all game audio.
+   * @param {boolean} enabled - Whether sound is on.
+   * @returns {void}
+   */
+  setSoundEnabled(enabled) {
+    this.game.sound.enabled = enabled;
+    this.syncSegmented('#optSoundSelector', enabled ? 'on' : 'off');
+  }
+
+  /**
    * Configures player 1 control scheme between Mouse and Keyboard.
    * @param {ControlMode} mode - Desired input control scheme.
    * @returns {void}
    */
   setControlMode(mode) {
     this.game.controlMode = mode;
-    const lblControl = document.getElementById('lbl-control-mode');
-    if (lblControl) {
-      lblControl.textContent = mode === 'mouse' ? 'Mouse' : 'Keyboard (W/S)';
-    }
     if (this.wrapper) {
       this.wrapper.classList.toggle('keyboard-mode', mode === 'keyboard');
     }
 
-    // Sync modal segmented control
-    document.querySelectorAll('#modalControlSelector .segment-btn').forEach((btn) => {
-      btn.classList.toggle('active', /** @type {HTMLElement} */ (btn).dataset.val === mode);
-    });
+    // Sync segmented controls (Match Setup + Game Options)
+    this.syncSegmented('#modalControlSelector, #optControlSelector', mode);
   }
 
   /**
@@ -177,13 +220,11 @@ class UIManager {
    */
   setOppMode(mode) {
     this.game.oppMode = mode;
-    const lblOpp = document.getElementById('lbl-opp-mode');
-    const btnDiff = document.getElementById('btn-difficulty');
     const modalDiffWrapper = document.getElementById('modalDifficultyWrapper');
+    const optDiffWrapper = document.getElementById('optDifficultyWrapper');
 
-    if (lblOpp) lblOpp.textContent = mode === 'bot' ? 'vs Bot' : '2 Players';
-    if (btnDiff) btnDiff.style.display = mode === 'bot' ? 'inline-block' : 'none';
-    if (modalDiffWrapper) modalDiffWrapper.style.display = mode === 'bot' ? 'flex' : 'none';
+    if (modalDiffWrapper) modalDiffWrapper.style.display = mode === 'bot' ? '' : 'none';
+    if (optDiffWrapper) optDiffWrapper.style.display = mode === 'bot' ? '' : 'none';
 
     const p2Desc = document.getElementById('p2-desc');
     const diffCapitalized = this.game.difficulty.charAt(0).toUpperCase() + this.game.difficulty.slice(1);
@@ -196,10 +237,8 @@ class UIManager {
     if (this.scoreP2NameEl) this.scoreP2NameEl.textContent = mode === 'bot' ? 'BOT' : 'PLAYER 2';
     if (this.p2EnergyHeaderLabel) this.p2EnergyHeaderLabel.textContent = mode === 'bot' ? 'BOT' : 'P2';
 
-    // Sync modal segmented control
-    document.querySelectorAll('#modalOppSelector .segment-btn').forEach((btn) => {
-      btn.classList.toggle('active', /** @type {HTMLElement} */ (btn).dataset.val === mode);
-    });
+    // Sync segmented controls (Match Setup + Game Options)
+    this.syncSegmented('#modalOppSelector, #optOppSelector', mode);
   }
 
   /**
@@ -210,18 +249,14 @@ class UIManager {
   setDifficulty(diff) {
     this.game.difficulty = diff;
     const labels = { easy: 'Easy', medium: 'Medium', insane: 'Insane' };
-    const lblDiff = document.getElementById('lbl-difficulty');
-    if (lblDiff) lblDiff.textContent = labels[diff];
 
     const p2Desc = document.getElementById('p2-desc');
     if (p2Desc) {
       p2Desc.textContent = `Tactical AI (${labels[diff]}) calculates ricochets and casts spells.`;
     }
 
-    // Sync modal segmented control
-    document.querySelectorAll('#modalDiffSelector .segment-btn').forEach((btn) => {
-      btn.classList.toggle('active', /** @type {HTMLElement} */ (btn).dataset.val === diff);
-    });
+    // Sync segmented controls (Match Setup + Game Options)
+    this.syncSegmented('#modalDiffSelector, #optDiffSelector', diff);
   }
 
   /**
@@ -333,38 +368,123 @@ class UIManager {
       });
     }
 
-    // Info Codex Modal Actions
-    const btnCloseInfo = document.getElementById('btn-close-info');
-    if (btnCloseInfo) {
-      btnCloseInfo.addEventListener('click', () => {
-        this.closeInfoModal();
-      });
-    }
+    // Close buttons ("x" in each modal header + action buttons)
+    /** @type {[string, () => void][]} */
+    const closeBindings = [
+      ['btn-close-info', () => this.closeInfoModal()],
+      ['btn-close-info-action', () => this.closeInfoModal()],
+      ['btn-close-options', () => this.closeOptionsModal()],
+      ['btn-close-options-action', () => this.closeOptionsModal()],
+      ['btn-close-config', () => this.closeConfigModal()],
+      ['btn-close-matchover', () => this.closeMatchOverModal()]
+    ];
+    closeBindings.forEach(([id, close]) => {
+      const btn = document.getElementById(id);
+      if (btn) btn.addEventListener('click', close);
+    });
 
-    const btnCloseInfoAction = document.getElementById('btn-close-info-action');
-    if (btnCloseInfoAction) {
-      btnCloseInfoAction.addEventListener('click', () => {
-        this.closeInfoModal();
-      });
-    }
+    // Clicking the dimmed backdrop of the viewport modals closes them
+    /** @type {[string, () => void][]} */
+    const backdropBindings = [
+      ['infoModal', () => this.closeInfoModal()],
+      ['optionsModal', () => this.closeOptionsModal()]
+    ];
+    backdropBindings.forEach(([id, close]) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('click', (e) => {
+          if (e.target === el) close();
+        });
+      }
+    });
 
-    const infoModalEl = document.getElementById('infoModal');
-    if (infoModalEl) {
-      infoModalEl.addEventListener('click', (e) => {
-        if (e.target === infoModalEl) {
-          this.closeInfoModal();
-        }
-      });
-    }
-
+    // Esc closes the top-most open modal
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        const info = document.getElementById('infoModal');
-        if (info && !info.classList.contains('hidden')) {
-          this.closeInfoModal();
+      if (e.key !== 'Escape') return;
+      /** @type {[string, () => void][]} */
+      const stack = [
+        ['infoModal', () => this.closeInfoModal()],
+        ['optionsModal', () => this.closeOptionsModal()],
+        ['matchOverModal', () => this.closeMatchOverModal()],
+        ['configModal', () => this.closeConfigModal()]
+      ];
+      for (const [id, close] of stack) {
+        const el = document.getElementById(id);
+        if (el && !el.classList.contains('hidden')) {
+          e.preventDefault();
+          close();
+          return;
         }
       }
     });
+  }
+
+  /**
+   * Opens the Game Options modal (pausing the game if currently active).
+   * @returns {void}
+   */
+  openOptionsModal() {
+    this.blurActive();
+    if (this.game.gameState === 'playing' && !this.game.isPaused) {
+      this.game.togglePause();
+    }
+    const optionsModal = document.getElementById('optionsModal');
+    if (optionsModal) optionsModal.classList.remove('hidden');
+  }
+
+  /**
+   * Closes the Game Options modal.
+   * @returns {void}
+   */
+  closeOptionsModal() {
+    const optionsModal = document.getElementById('optionsModal');
+    if (optionsModal) optionsModal.classList.add('hidden');
+    this.blurActive();
+  }
+
+  /**
+   * Closes the Match Setup modal, returning to whatever was happening before it opened
+   * (a paused match, the match-over screen, or the idle arena on first launch).
+   * @returns {void}
+   */
+  closeConfigModal() {
+    const configModal = document.getElementById('configModal');
+    if (configModal) configModal.classList.add('hidden');
+    this.blurActive();
+
+    const ret = this.configReturn;
+    this.configReturn = null;
+    if (!ret) return; // No match in progress: arena stays idle until a match is started
+
+    this.game.gameState = ret.state;
+    if (ret.state === 'game_over') {
+      const matchOver = document.getElementById('matchOverModal');
+      if (matchOver) matchOver.classList.remove('hidden');
+    } else if (ret.state === 'playing' || ret.state === 'serve') {
+      // Come back paused so the player can resume when ready
+      this.game.isPaused = false;
+      this.game.togglePause();
+    }
+  }
+
+  /**
+   * Closes the Match Over modal, leaving the final scoreboard visible.
+   * @returns {void}
+   */
+  closeMatchOverModal() {
+    const matchOver = document.getElementById('matchOverModal');
+    if (matchOver) matchOver.classList.add('hidden');
+    this.blurActive();
+  }
+
+  /**
+   * Releases keyboard focus so Space / hotkeys never re-trigger a focused button.
+   * @returns {void}
+   */
+  blurActive() {
+    if (document.activeElement && typeof /** @type {HTMLElement} */ (document.activeElement).blur === 'function') {
+      /** @type {HTMLElement} */ (document.activeElement).blur();
+    }
   }
 
   /**
@@ -401,10 +521,7 @@ class UIManager {
    */
   toggleTheaterMode() {
     const isTheater = document.body.classList.toggle('theater-mode');
-    const btnTheater = document.getElementById('btn-theater-mode');
-    const lblTheater = document.getElementById('lbl-theater-mode');
-    if (btnTheater) btnTheater.classList.toggle('active', isTheater);
-    if (lblTheater) lblTheater.textContent = isTheater ? 'Theater: On' : 'Theater';
+    this.syncSegmented('#optTheaterSelector', isTheater ? 'theater' : 'standard');
   }
 
   /**
@@ -429,10 +546,7 @@ class UIManager {
    */
   syncFullscreenState() {
     const isFullscreen = Boolean(document.fullscreenElement);
-    const btnFullscreen = document.getElementById('btn-fullscreen');
-    const lblFullscreen = document.getElementById('lbl-fullscreen');
-    if (btnFullscreen) btnFullscreen.classList.toggle('active', isFullscreen);
-    if (lblFullscreen) lblFullscreen.textContent = isFullscreen ? 'Exit' : 'Fullscreen';
+    this.syncSegmented('#optFullscreenSelector', isFullscreen ? 'on' : 'off');
   }
 
   /**
@@ -440,19 +554,22 @@ class UIManager {
    * @returns {void}
    */
   openConfigModal() {
-    if (document.activeElement && typeof /** @type {HTMLElement} */ (document.activeElement).blur === 'function') {
-      /** @type {HTMLElement} */ (document.activeElement).blur();
-    }
+    this.blurActive();
+    // Remember what to return to if the modal is dismissed without starting a match
+    const prevState = this.game.gameState;
+    this.configReturn = prevState === 'config' ? null : { state: prevState };
     this.game.gameState = 'config';
     this.game.isPaused = false;
     const pauseOverlay = document.getElementById('pauseOverlay');
     const matchOver = document.getElementById('matchOverModal');
     const configModal = document.getElementById('configModal');
     const infoModal = document.getElementById('infoModal');
+    const optionsModal = document.getElementById('optionsModal');
 
     if (pauseOverlay) pauseOverlay.classList.add('hidden');
     if (matchOver) matchOver.classList.add('hidden');
     if (infoModal) infoModal.classList.add('hidden');
+    if (optionsModal) optionsModal.classList.add('hidden');
     if (configModal) configModal.classList.remove('hidden');
   }
 
@@ -464,9 +581,12 @@ class UIManager {
     const configModal = document.getElementById('configModal');
     const matchOver = document.getElementById('matchOverModal');
     const infoModal = document.getElementById('infoModal');
+    const optionsModal = document.getElementById('optionsModal');
     if (configModal) configModal.classList.add('hidden');
     if (matchOver) matchOver.classList.add('hidden');
     if (infoModal) infoModal.classList.add('hidden');
+    if (optionsModal) optionsModal.classList.add('hidden');
+    this.configReturn = null;
   }
 
   /**
@@ -557,7 +677,7 @@ class UIManager {
     /** @type {Record<string, string>} */
     const names = {
       fireball: 'Fireball',
-      freeze: 'Freeze',
+      crazyball: 'Crazy Ball',
       multiball: 'Multiball',
       shield: 'Force Shield'
     };
@@ -685,7 +805,7 @@ class UIManager {
 
     // 3. Update Skill Button States
     const p1 = this.game.paddle1;
-    const powers = ['fireball', 'freeze', 'multiball', 'shield'];
+    const powers = ['fireball', 'crazyball', 'multiball', 'shield'];
 
     powers.forEach((p) => {
       const btn = document.getElementById(`btn-power-${p}`);

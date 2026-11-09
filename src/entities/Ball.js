@@ -15,8 +15,28 @@
  */
 
 /**
+ * Unpredictable behaviors rolled while Crazy Ball is active.
+ * - shrink:  ball shrinks to a tiny dot.
+ * - grow:    ball balloons and pulses in size.
+ * - zigzag:  ball snakes up and down along its path.
+ * - gravity: fake sideways gravity bends the trajectory into a curve.
+ * - stutter: stop-and-go movement (freezes mid-air, then dashes).
+ * - blink:   ball vanishes and reappears closer to the defender.
+ * - sticky:  ball glues to the next surface it touches (wall or paddle), then fires off at a random angle.
+ * - fakeout: sudden vertical U-turns mid-flight.
+ * @typedef {'shrink' | 'grow' | 'zigzag' | 'gravity' | 'stutter' | 'blink' | 'sticky' | 'fakeout'} CrazyMode
+ */
+
+/**
+ * @typedef {Object} CrazyStick
+ * @property {'top' | 'bottom' | 'paddle1' | 'paddle2'} surface - Surface holding the ball.
+ * @property {number} timer - Remaining capture time in seconds.
+ * @property {number} offsetY - Vertical offset relative to the paddle top (paddle captures only).
+ */
+
+/**
  * PONG: CYBERSTORM - Ball Entity
- * Supports standard ball physics, Fireball state, armed Bomb state,
+ * Supports standard ball physics, Fireball state, Crazy Ball chaos, armed Bomb state,
  * shrapnel pieces, motion trails, and stackable timed modifiers.
  */
 class Ball {
@@ -69,6 +89,74 @@ class Ball {
     this.invisibilityTimer = 0; // Cloaked flickering effect remaining duration
     /** @type {number|null} */
     this.invisibilityOwner = null; // Player who collected the item (1 or 2)
+
+    // --- Crazy Ball chaos state ---
+    /** @type {number} */
+    this.crazyTimer = 0; // Remaining Crazy Ball duration in seconds (0 = inactive)
+    /** @type {number|null} */
+    this.crazyOwner = null; // Player who cast Crazy Ball (1 or 2)
+    /** @type {CrazyMode|null} */
+    this.crazyMode = null; // Current unpredictable behavior
+    /** @type {number} */
+    this.crazyModeTimer = 0; // Remaining time in the current behavior
+    /** @type {number} */
+    this.crazyPhase = 0; // Free-running clock for oscillating behaviors
+    /** @type {number} */
+    this.crazyTimeScale = 1; // Movement time multiplier (stutter behavior)
+    /** @type {number} */
+    this.crazyRadiusTarget = radius; // Radius the ball eases towards (shrink / grow)
+    /** @type {number} */
+    this.crazyGravity = 0; // Fake lateral gravity applied to vy (gravity behavior)
+    /** @type {boolean} */
+    this.crazyHidden = false; // Ball fully vanished (blink behavior)
+    /** @type {number} */
+    this.crazyHiddenTimer = 0; // Time left before the ball reappears
+    /** @type {boolean} */
+    this.crazySticky = false; // Next surface touched will capture the ball
+    /** @type {CrazyStick|null} */
+    this.crazyStuck = null; // Active surface capture (wall or paddle)
+  }
+
+  /**
+   * Whether Crazy Ball chaos is currently active on this ball.
+   * @returns {boolean}
+   */
+  get isCrazy() {
+    return this.crazyTimer > 0;
+  }
+
+  /**
+   * Activates Crazy Ball chaos owned by a player.
+   * The effect persists through deflections until its timer runs out.
+   * @param {number} ownerId - Player ID who cast Crazy Ball (1 or 2).
+   * @param {number} [duration=5.0] - Chaos duration in seconds.
+   * @returns {void}
+   */
+  setCrazy(ownerId, duration = 5.0) {
+    this.crazyTimer = duration;
+    this.crazyOwner = ownerId;
+    this.crazyMode = null;
+    this.crazyModeTimer = 0; // Forces an immediate behavior roll
+    this.crazyPhase = 0;
+  }
+
+  /**
+   * Ends Crazy Ball chaos and restores every temporary modifier.
+   * @returns {void}
+   */
+  clearCrazy() {
+    this.crazyTimer = 0;
+    this.crazyOwner = null;
+    this.crazyMode = null;
+    this.crazyModeTimer = 0;
+    this.crazyTimeScale = 1;
+    this.crazyRadiusTarget = this.baseRadius;
+    this.crazyGravity = 0;
+    this.crazyHidden = false;
+    this.crazyHiddenTimer = 0;
+    this.crazySticky = false;
+    this.crazyStuck = null;
+    if (!this.isBomb) this.radius = this.baseRadius;
   }
 
   /**

@@ -168,10 +168,48 @@ class SoundController {
   }
 
   /**
-   * Synthesizes icy cryogenic freeze sweep.
+   * Synthesizes a wobbly, warbling sweep for the Crazy Ball cast.
    * @returns {void}
    */
-  playFreezeSound() {
+  playCrazyBallSound() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const lfo = this.ctx.createOscillator();
+    const lfoGain = this.ctx.createGain();
+
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(300, now);
+    osc.frequency.exponentialRampToValueAtTime(1100, now + 0.45);
+
+    // Fast vibrato makes the pitch wobble unpredictably
+    lfo.type = 'sine';
+    lfo.frequency.setValueAtTime(18, now);
+    lfoGain.gain.setValueAtTime(160, now);
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    lfo.start(now);
+    osc.start(now);
+    lfo.stop(now + 0.45);
+    osc.stop(now + 0.45);
+  }
+
+  /**
+   * Synthesizes a short random-pitched glitch blip used by Crazy Ball
+   * behaviors (vanish, reappear, stick, release).
+   * @returns {void}
+   */
+  playCrazyGlitch() {
     if (!this.enabled) return;
     this.init();
     if (!this.ctx) return;
@@ -179,19 +217,20 @@ class SoundController {
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, now);
-    osc.frequency.exponentialRampToValueAtTime(1760, now + 0.15);
-    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.3);
+    osc.type = 'square';
+    const base = 400 + Math.random() * 900;
+    osc.frequency.setValueAtTime(base, now);
+    osc.frequency.setValueAtTime(base * 1.5, now + 0.03);
+    osc.frequency.setValueAtTime(base * 0.75, now + 0.06);
 
-    gain.gain.setValueAtTime(0.28, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+    gain.gain.setValueAtTime(0.07, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
 
     osc.connect(gain);
     gain.connect(this.ctx.destination);
 
-    osc.start();
-    osc.stop(now + 0.3);
+    osc.start(now);
+    osc.stop(now + 0.09);
   }
 
   /**

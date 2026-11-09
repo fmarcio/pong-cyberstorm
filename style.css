@@ -7,7 +7,7 @@
   --primary-pink: #a855f7;
   --accent-yellow: #ffd166;
   --power-orange: #ff5500;
-  --power-ice: #38bdf8;
+  --power-crazy: #ff3ea5;
   --power-purple: #c084fc;
   --power-green: #10b981;
   --text-main: #f5efff;
@@ -262,19 +262,6 @@ body {
   gap: 2px;
 }
 
-.target-chip {
-  font-family: var(--font-display);
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: var(--accent-yellow);
-  letter-spacing: 1px;
-  background: rgba(255, 230, 0, 0.12);
-  border: 1px solid rgba(255, 230, 0, 0.3);
-  padding: 3px 10px;
-  border-radius: 999px;
-  text-shadow: 0 0 8px rgba(255, 230, 0, 0.4);
-}
-
 .vs-text {
   font-family: var(--font-display);
   font-size: 0.82rem;
@@ -294,11 +281,11 @@ body {
 }
 
 .side-energy-column {
-  width: 52px;
+  width: 34px;
   background: var(--surface-color);
   border: 1px solid var(--surface-border);
-  border-radius: 12px;
-  padding: 14px 6px;
+  border-radius: 10px;
+  padding: 10px 2px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -321,7 +308,7 @@ body {
 
 .column-label {
   font-family: var(--font-display);
-  font-size: 0.75rem;
+  font-size: 0.6rem;
   font-weight: 800;
   letter-spacing: 0.5px;
 }
@@ -336,11 +323,11 @@ body {
 
 .meter-track {
   flex-grow: 1;
-  width: 16px;
+  width: 7px;
   background: #090713;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 999px;
-  margin: 12px 0;
+  margin: 10px 0;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -355,17 +342,17 @@ body {
 
 .p1-fill {
   background: linear-gradient(to top, #d97706, #ffaa00);
-  box-shadow: 0 0 12px rgba(255, 170, 0, 0.7);
+  box-shadow: 0 0 8px rgba(255, 170, 0, 0.7);
 }
 
 .p2-fill {
   background: linear-gradient(to top, #7e22ce, #a855f7);
-  box-shadow: 0 0 12px rgba(168, 85, 247, 0.7);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.7);
 }
 
 .column-value {
   font-family: var(--font-display);
-  font-size: 0.72rem;
+  font-size: 0.56rem;
   font-weight: 700;
   color: var(--text-main);
 }
@@ -478,7 +465,9 @@ canvas {
   backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
-  align-items: center;
+  /* "safe" keeps tall cards scrollable instead of clipping their top edge */
+  align-items: safe center;
+  overflow-y: auto;
   z-index: 20;
   padding: 20px;
   transition: opacity 0.25s ease;
@@ -533,6 +522,12 @@ canvas {
   display: grid;
   grid-template-columns: 1fr 1.2fr;
   gap: 14px;
+}
+
+.config-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .section-title {
@@ -698,12 +693,15 @@ canvas {
 .victory-card {
   text-align: center;
   align-items: center;
-  max-width: 440px;
+  max-width: 480px;
+  gap: 12px;
+  padding: 22px 28px;
 }
 
 .victory-icon {
-  font-size: 3rem;
-  margin-bottom: -6px;
+  display: flex;
+  line-height: 0;
+  margin-bottom: -2px;
   filter: drop-shadow(0 0 12px rgba(255, 230, 0, 0.6));
 }
 
@@ -720,9 +718,9 @@ canvas {
   align-items: center;
   justify-content: center;
   gap: 18px;
-  margin: 6px 0;
+  margin: 0;
   font-family: var(--font-display);
-  font-size: 3rem;
+  font-size: 2.6rem;
   font-weight: 900;
 }
 
@@ -751,7 +749,7 @@ canvas {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   width: 100%;
-  margin: 10px 0 16px 0;
+  margin: 4px 0 8px 0;
   text-align: left;
 }
 
@@ -785,6 +783,71 @@ canvas {
 }
 
 /* --- SKILLS & POWERS HUD --- */
+/* --- DISCREET EVENT FEED (above the powers HUD) --- */
+.event-feed {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 30px;
+  padding: 0 12px;
+  background: var(--surface-color);
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.event-feed-label {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.event-feed-label .ui-icon {
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+}
+
+.event-feed-list {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(to right, #000 85%, transparent);
+}
+
+.feed-chip {
+  --chip-color: var(--primary-cyan);
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--chip-color);
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--chip-color) 45%, transparent);
+  background: color-mix(in srgb, var(--chip-color) 10%, transparent);
+  animation: feedChipIn 0.25s ease-out;
+  transition: opacity 0.4s ease;
+}
+
+/* Older events fade back so the newest stands out */
+.feed-chip:nth-child(2) { opacity: 0.65; }
+.feed-chip:nth-child(3) { opacity: 0.4; }
+.feed-chip.fading { opacity: 0 !important; }
+
+@keyframes feedChipIn {
+  from { transform: translateX(-8px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
 .skills-hud {
   width: 100%;
   background: var(--surface-color);
@@ -881,11 +944,11 @@ canvas {
 }
 .skill-btn#btn-power-fireball.ready .skill-name { color: #ff914d; }
 
-.skill-btn#btn-power-freeze.ready {
-  border-color: var(--power-ice);
-  box-shadow: 0 0 12px rgba(85, 214, 255, 0.3);
+.skill-btn#btn-power-crazyball.ready {
+  border-color: var(--power-crazy);
+  box-shadow: 0 0 12px rgba(255, 62, 165, 0.3);
 }
-.skill-btn#btn-power-freeze.ready .skill-name { color: var(--power-ice); }
+.skill-btn#btn-power-crazyball.ready .skill-name { color: var(--power-crazy); }
 
 .skill-btn#btn-power-multiball.ready {
   border-color: var(--power-purple);
@@ -947,8 +1010,8 @@ body.theater-mode canvas {
   object-fit: contain;
 }
 
-/* --- INFO CODEX MODAL & CLOSE BUTTON (Fixed Viewport Overlay) --- */
-#infoModal.modal-overlay {
+/* --- VIEWPORT MODALS (Info Codex, Game Options) & CLOSE BUTTONS --- */
+.modal-overlay.modal-fixed {
   position: fixed;
   inset: 0;
   z-index: 9999;
@@ -960,7 +1023,7 @@ body.theater-mode canvas {
   padding: 24px 16px;
 }
 
-#infoModal.modal-overlay.hidden {
+.modal-overlay.modal-fixed.hidden {
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
@@ -997,6 +1060,28 @@ body.theater-mode canvas {
   justify-content: center;
   transition: all 0.2s ease;
   line-height: 1;
+}
+
+.btn-close-modal svg {
+  flex-shrink: 0;
+}
+
+/* Close button pinned to the top-right corner of header-less cards */
+.modal-card {
+  position: relative;
+}
+
+.modal-close-corner {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+}
+
+.options-modal-card {
+  max-width: 560px;
+  width: min(560px, 94vw);
+  max-height: 88vh;
+  overflow-y: auto;
 }
 
 .btn-close-modal:hover {
@@ -1167,8 +1252,8 @@ kbd {
 }
 
 .column-icon-svg {
-  width: 20px;
-  height: 20px;
+  width: 15px;
+  height: 15px;
   stroke: var(--primary-cyan);
   stroke-width: 2;
 }
@@ -1198,9 +1283,9 @@ kbd {
   filter: drop-shadow(0 0 8px rgba(255, 85, 0, 0.6));
 }
 
-.skill-btn#btn-power-freeze.ready .skill-svg {
-  stroke: var(--power-ice);
-  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.6));
+.skill-btn#btn-power-crazyball.ready .skill-svg {
+  stroke: var(--power-crazy);
+  filter: drop-shadow(0 0 8px rgba(255, 62, 165, 0.6));
 }
 
 .skill-btn#btn-power-multiball.ready .skill-svg {
@@ -1214,8 +1299,8 @@ kbd {
 }
 
 .victory-svg {
-  width: 58px;
-  height: 58px;
+  width: 46px;
+  height: 46px;
   stroke: var(--accent-yellow);
   stroke-width: 2;
   filter: drop-shadow(0 0 16px rgba(255, 209, 102, 0.7));
@@ -1258,11 +1343,14 @@ kbd {
     font-size: 0.75rem;
   }
   .side-energy-column {
-    width: 38px;
-    padding: 10px 4px;
+    width: 28px;
+    padding: 8px 1px;
   }
   .column-label, .column-value {
-    font-size: 0.65rem;
+    font-size: 0.5rem;
+  }
+  .meter-track {
+    width: 5px;
   }
   .skills-buttons {
     grid-template-columns: repeat(2, 1fr);
