@@ -237,9 +237,10 @@ class PongGame {
       this.keys[e.key.toLowerCase()] = false;
     });
 
-    this.canvas.addEventListener('mousemove', (e) => {
+    window.addEventListener('mousemove', (e) => {
       if (this.controlMode !== 'mouse' || this.isPaused || this.gameState === 'config' || this.gameState === 'game_over') return;
       const rect = this.canvas.getBoundingClientRect();
+      if (!rect.height) return;
       const scaleY = this.height / rect.height;
       const mouseY = (e.clientY - rect.top) * scaleY;
 
@@ -1787,6 +1788,7 @@ class PongGame {
 
     this.update(dt);
     this.draw();
+    if (this.ui) this.ui.syncCursorVisibility();
 
     requestAnimationFrame((t) => this.loop(t));
   }

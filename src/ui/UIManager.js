@@ -59,6 +59,8 @@ class UIManager {
 
     /** @type {{ state: string } | null} State to restore when Match Setup is dismissed */
     this.configReturn = null;
+    /** @type {boolean} Tracks cached cursor hidden state */
+    this._lastCursorHidden = false;
 
     this.setupUI();
     this.setupModals();
@@ -211,6 +213,7 @@ class UIManager {
 
     // Sync segmented controls (Match Setup + Game Options)
     this.syncSegmented('#modalControlSelector, #optControlSelector', mode);
+    this.syncCursorVisibility();
   }
 
   /**
@@ -547,6 +550,39 @@ class UIManager {
   syncFullscreenState() {
     const isFullscreen = Boolean(document.fullscreenElement);
     this.syncSegmented('#optFullscreenSelector', isFullscreen ? 'on' : 'off');
+    this.syncCursorVisibility();
+  }
+
+  /**
+   * Checks whether any modal, dialog, or pause overlay is currently visible.
+   * @returns {boolean}
+   */
+  isAnyModalOpen() {
+    const ids = ['configModal', 'matchOverModal', 'infoModal', 'optionsModal', 'pauseOverlay'];
+    return ids.some((id) => {
+      const el = document.getElementById(id);
+      return Boolean(el && !el.classList.contains('hidden'));
+    });
+  }
+
+  /**
+   * Synchronizes cursor visibility across the entire page.
+   * When playing in Fullscreen with Mouse control, hides the cursor completely across the viewport.
+   * Restores the cursor immediately when paused, in menus/modals, in keyboard mode, or in windowed mode.
+   * @returns {void}
+   */
+  syncCursorVisibility() {
+    const isFullscreen = Boolean(document.fullscreenElement);
+    const isMouse = this.game.controlMode === 'mouse';
+    const isPlaying = !this.game.isPaused && (this.game.gameState === 'playing' || this.game.gameState === 'serve' || this.game.gameState === 'countdown');
+
+    const shouldCheckModals = isFullscreen && isMouse && isPlaying;
+    const hideCursor = shouldCheckModals && !this.isAnyModalOpen();
+
+    if (this._lastCursorHidden !== hideCursor) {
+      this._lastCursorHidden = hideCursor;
+      document.body.classList.toggle('hide-cursor-all', hideCursor);
+    }
   }
 
   /**
