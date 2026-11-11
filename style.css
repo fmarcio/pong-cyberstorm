@@ -1010,6 +1010,12 @@ body.theater-mode canvas {
   object-fit: contain;
 }
 
+/* Hide mouse cursor across the entire screen during active mouse gameplay in fullscreen */
+body.hide-cursor-all,
+body.hide-cursor-all * {
+  cursor: none !important;
+}
+
 /* --- VIEWPORT MODALS (Info Codex, Game Options) & CLOSE BUTTONS --- */
 .modal-overlay.modal-fixed {
   position: fixed;
